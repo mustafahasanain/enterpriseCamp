@@ -1,0 +1,1143 @@
+this how i am imagen the system should be 
+
+
+senario one use create request 
+
+user should open the link to create a new request 
+user should fill in the required fields {(select dropdown the usertype admin add it brfore )userType, name, email, phoneNumber (NOTE : the fields display depend on the userType need)} in the request form 
+for example if user type is student the fields should be userType, name, email, phoneNumber, studentID, courseName (NOTE  : these filds add via admin wwhen he want to add new userType )
+user should submit the request form and then user in front end should receive a confirmation message upon successful submission
+backend should receive the request data and store it in the database in request table 
+thw admin should see these new requests in the admin dashboard under the requests section and can view the details of each request and take appropriate action such as approve or reject the request
+if the request is approved the system should save the request into the related userType table if we assume userType is agent it should save into agent table and change the status of the request to approved in the request table
+⚠️ [تناقض: هل ننقل البيانات لجدول ديناميكي أم نكتفي بتغيير status؟ - إذا استخدمنا JSONB لا حاجة للنقل]
+if the request is rejected the system should update the status of the request to rejected in the request table 
+
+user should receive an email notification  or whatsapp about the status of their request whether it is approved or rejected
+
+
+
+senario two admin create new userType
+admin should log in to the admin dashboard using valid credentials email and password
+admin should navigate to the userType management panel in the dashboard 
+admin should click on the "Create New UserType" button to open the userType creation form
+admin should fill in the required fields in the userType creation form such as userType name and any additional attributes that should be associated with this userType (e.g., studentID, courseName for student userType)
+admin should submit the userType creation form
+the system should validate the input data to ensure all required fields are filled and meet any specified criteria
+upon successful validation the system should create a new userType in the database and generate the necessary fields for that userType
+the admin should receive a confirmation message indicating that the new userType has been successfully created
+the new userType should now be available in the dropdown menu when users create new requests
+the admin should be able to view and manage the newly created userType in the userType management panel including editing or deleting the userType if necessary
+
+in the database there is table called fleds where admin can use to select which fields to display for each userType when creating a new request
+the fields table should have columns like id, userType, fieldName, isRequired, fieldType (e.g., text, number, dropdown)
+when admin create a new userType he should also add the relevant fields to the fields table so that when a user selects that userType while creating a request the system knows which fields to display based on the entries in the fields table designed to handle user requests and admin management of user types.
+the system should be designed to handle user requests and admin management of user types.
+
+When admin creates a new userType, do you want the system to automatically create a new database table for that userType? Yes, when the admin creates a new userType, the system should automatically create a new database table for that userType to store the relevant user data. The table name can be derived from the userType name (e.g., if the userType is "agent", the table could be named "agents"). The system should also ensure that the necessary fields defined by the admin during the userType creation are included as columns in the newly created table.
+
+
+This means that when the admin creates a user type, they also create the required fields for this user. That is, they should see all the fields that can be used.
+
+
+Backend: Node.js/Express
+Frontend: React
+Database: PostgreSQL
+
+
+now when admin navgate to the panel to create new userType he should see all the fields this fields pull it from table called fields_master which contain all the possible fields that can be used for any userType 
+the fields_master table should , now admin add new userType name and then select the fields from the fields_master table that he want to use for this userType.
+
+
+
+المستخدم                    Frontend                         Backend                         Database
+    │                           │                                │                                │
+    │──► يفتح الرابط ──────────►│                                │                                │
+    │                           │──► GET /user-types ───────────►│──► SELECT user_types ─────────►│
+    │                           │◄── قائمة الأنواع ◄─────────────│◄── النتائج ◄──────────────────│
+    │◄── يعرض dropdown ◄────────│                                │                                │
+    │                           │                                │                                │
+    │──► يختار نوع المستخدم ───►│                                │                                │
+    │                           │──► GET /fields/:typeId ────────►│──► SELECT fields ─────────────►│
+    │                           │◄── الحقول المطلوبة ◄───────────│◄── النتائج ◄──────────────────│
+    │◄── يعرض الحقول ◄──────────│                                │                                │
+    │                           │                                │                                │
+    │──► يملأ ويرسل ───────────►│──► POST /requests ─────────────►│──► INSERT request ────────────►│
+    │◄── رسالة تأكيد ◄──────────│◄── success ◄────────────────────│◄── done ◄─────────────────────│
+
+
+
+Admin                        Frontend                         Backend                         Database
+    │                           │                                │                                │
+    │──► تسجيل دخول ───────────►│──► POST /auth/login ───────────►│──► التحقق ────────────────────►│
+    │◄── dashboard ◄────────────│◄── token ◄──────────────────────│◄── admin data ◄───────────────│
+    │                           │                                │                                │
+    │──► صفحة إدارة الأنواع ───►│──► GET /fields-master ─────────►│──► SELECT * ──────────────────►│
+    │◄── كل الحقول المتاحة ◄────│◄── fields list ◄────────────────│◄── fields ◄───────────────────│
+    │                           │                                │                                │
+    │──► ينشئ نوع جديد ────────►│──► POST /user-types ───────────►│                                │
+    │    + يختار الحقول         │    {name, fields[]}            │──► INSERT user_type ───────────►│
+    │                           │                                │──► INSERT user_type_fields ────►│
+    │◄── تأكيد ◄────────────────│◄── success ◄────────────────────│◄── done ◄─────────────────────│
+
+
+
+
+API Endpoints Documentation
+═══════════════════════════════════════════════════════════════════════════════
+
+Authentication
+──────────────────────────────────────────────────────────────────────────────
+Method          Endpoint                        الوصف
+POST            /api/v1/auth/login              تسجيل دخول المدير
+
+
+User Types Management
+──────────────────────────────────────────────────────────────────────────────
+Method          Endpoint                        الوصف
+GET             /api/v1/user-types              جلب أنواع المستخدمين
+POST            /api/v1/user-types              إنشاء نوع مستخدم جديد
+PUT             /api/v1/user-types/:id          تعديل نوع مستخدم
+DELETE          /api/v1/user-types/:id          حذف نوع مستخدم
+
+
+Fields Management
+──────────────────────────────────────────────────────────────────────────────
+Method          Endpoint                        الوصف
+GET             /api/v1/fields-master           جلب كل الحقول المتاحة
+GET             /api/v1/user-types/:id/fields   جلب حقول نوع معين
+
+
+Requests Management
+──────────────────────────────────────────────────────────────────────────────
+Method          Endpoint                        الوصف
+POST            /api/v1/requests                إنشاء طلب جديد
+GET             /api/v1/requests                جلب كل الطلبات (للمدير)
+PUT             /api/v1/requests/:id/status     تغيير حالة الطلب (approve/reject + admin_notes)
+
+
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    DATABASE SCHEMA (مبسط)                               │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│  ┌────────────────┐    ┌──────────────────┐    ┌───────────────────┐    │
+│  │  fields_master │    │    user_types    │    │      requests     │    │
+│  ├────────────────┤    ├──────────────────┤    ├───────────────────┤    │
+│  │ id             │    │ id               │    │ id                │    │
+│  │ field_name     │    │ type_name        │    │ user_type_id (FK) │    │
+│  │ field_email    │    │ is_active        │    │ data (JSONB)      │    │
+│  │ field_phone    │    │ created_at       │    │ status            │    │
+│  │ field_options  │    └──────────────────┘    │ admin_notes       │    │
+│  └────────────────┘             │              │ created_at        │    │
+│          │                      │              └───────────────────┘    │
+│          └──────────┬───────────┘                                       │
+│                     ▼                                                   │
+│          ┌───────────────────────┐         ┌─────────────────────┐     │
+│          │   user_type_fields    │         │   .env (المدير)     │     │
+│          ├───────────────────────┤         ├─────────────────────┤     │
+│          │ id                    │         │ ADMIN_EMAIL         │     │
+│          │ user_type_id (FK)     │         │ ADMIN_PASSWORD_HASH │     │
+│          │ field_id (FK)         │         └─────────────────────┘     │
+│          │ is_required           │                                     │
+│          │ field_order           │                                     │
+│          └───────────────────────┘                                     │
+│                                                                         │
+│  ✅ 4 جداول فقط (بدون جداول ديناميكية)                                   │
+│  ✅ المدير في .env (لا حاجة لجدول admins)                                │
+│  ✅ كل البيانات في requests.data (JSONB)                                │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
+
+
+═══════════════════════════════════════════════════════════════════════════════
+
+
+
+المستخدم → اختيار النوع → عرض الحقول → ملء البيانات → إرسال → حفظ في requests
+                                                                    ↓
+                                                            المدير يراجع
+                                                                    ↓
+                                                    ┌───────────────┴───────────────┐
+                                                    ↓                               ↓
+                                               موافقة                            رفض
+                                                    ↓                               ↓
+                                          تحديث status               تحديث status
+                                          + admin_notes              + admin_notes
+                                                    ↓                               ↓
+                                               إشعار المستخدم ←──────────────────────┘
+
+
+═══════════════════════════════════════════════════════════════════════════════
+
+
+
+
+المدير → جلب fields_master → اختيار الحقول → إنشاء النوع
+                                                    ↓
+                                    ┌───────────────┴───────────────┐
+                                    ↓                               ↓
+                            INSERT في                         INSERT في
+                            user_types                        user_type_fields
+
+
+═══════════════════════════════════════════════════════════════════════════════
+                              DETAILED FLOW DIAGRAMS
+                              التدفقات التفصيلية
+═══════════════════════════════════════════════════════════════════════════════
+
+
+
+
+FLOW 1: USER CREATE REQUEST
+─────────────────────────────────────────────────────────────────────────────
+تدفق المستخدم - إنشاء طلب جديد
+
+المستخدم                    Frontend                         Backend                         Database
+    │                           │                                │                                │
+    │ 1. يفتح الرابط            │                                │                                │
+    │──────────────────────────►│                                │                                │
+    │                           │ 2. GET /api/v1/user-types      │                                │
+    │                           │───────────────────────────────►│ 3. SELECT * FROM user_types   │
+    │                           │                                │    WHERE is_active = true     │
+    │                           │                                │───────────────────────────────►│
+    │                           │                                │◄───────────────────────────────│
+    │                           │◄───────────────────────────────│                                │
+    │ 4. يرى dropdown الأنواع   │                                │                                │
+    │◄──────────────────────────│                                │                                │
+    │   [student ▼]             │                                │                                │
+    │   [agent   ]              │                                │                                │
+    │   [teacher ]              │                                │                                │
+    │                           │                                │                                │
+    │ 5. يختار "student"        │                                │                                │
+    │──────────────────────────►│                                │                                │
+    │                           │ 6. GET /api/v1/user-types/1/fields                             │
+    │                           │───────────────────────────────►│ 7. SELECT fm.*, utf.is_required│
+    │                           │                                │    FROM user_type_fields utf  │
+    │                           │                                │    JOIN fields_master fm      │
+    │                           │                                │    ON utf.field_id = fm.id    │
+    │                           │                                │    WHERE utf.user_type_id = 1 │
+    │                           │                                │    ORDER BY utf.field_order   │
+    │                           │                                │───────────────────────────────►│
+    │                           │                                │◄───────────────────────────────│
+    │                           │◄───────────────────────────────│                                │
+    │ 8. يرى الحقول             │                                │                                │
+    │◄──────────────────────────│                                │                                │
+    │   ┌─────────────────────┐ │                                │                                │
+    │   │ Name: [________]    │ │                                │                                │
+    │   │ Email: [________]   │ │                                │                                │
+    │   │ Phone: [________]   │ │                                │                                │
+    │   │ Student ID: [____]  │ │                                │                                │
+    │   │ Course: [________]  │ │                                │                                │
+    │   │      [Submit]       │ │                                │                                │
+    │   └─────────────────────┘ │                                │                                │
+    │                           │                                │                                │
+    │ 9. يملأ ويضغط Submit      │                                │                                │
+    │──────────────────────────►│ 10. POST /api/v1/requests      │                                │
+    │                           │     {                          │                                │
+    │                           │       user_type_id: 1,         │                                │
+    │                           │       data: {                  │                                │
+    │                           │         name: "أحمد محمد",     │                                │
+    │                           │         email: "ahmed@mail.com"│                                │
+    │                           │         phone: "0501234567",   │                                │
+    │                           │         student_id: "STU001",  │                                │
+    │                           │         course: "CS"           │                                │
+    │                           │       }                        │                                │
+    │                           │     }                          │                                │
+    │                           │───────────────────────────────►│ 11. Validate fields           │
+    │                           │                                │ 12. INSERT INTO requests      │
+    │                           │                                │     (user_type_id, data,      │
+    │                           │                                │      status, created_at)      │
+    │                           │                                │     VALUES (1, '{...}',       │
+    │                           │                                │      'pending', NOW())        │
+    │                           │                                │───────────────────────────────►│
+    │                           │                                │◄───────────────────────────────│
+    │                           │◄───────────────────────────────│                                │
+    │ 13. ✅ "تم إرسال طلبك"    │                                │                                │
+    │◄──────────────────────────│                                │                                │
+
+
+
+
+FLOW 2: ADMIN LOGIN
+─────────────────────────────────────────────────────────────────────────────
+تدفق المدير - تسجيل الدخول
+
+المدير                      Frontend                         Backend                          .env
+    │                           │                                │                                │
+    │ 1. يفتح صفحة الدخول       │                                │                                │
+    │──────────────────────────►│                                │                                │
+    │   ┌─────────────────────┐ │                                │                                │
+    │   │ Email: [________]   │ │                                │                                │
+    │   │ Password: [*****]   │ │                                │                                │
+    │   │      [Login]        │ │                                │                                │
+    │   └─────────────────────┘ │                                │                                │
+    │                           │                                │                                │
+    │ 2. يدخل البيانات ويضغط    │                                │                                │
+    │──────────────────────────►│ 3. POST /api/v1/auth/login     │                                │
+    │                           │    {                           │                                │
+    │                           │      email: "admin@site.com",  │                                │
+    │                           │      password: "123456"        │                                │
+    │                           │    }                           │                                │
+    │                           │───────────────────────────────►│ 4. Compare with .env          │
+    │                           │                                │    ADMIN_EMAIL=admin@site.com │
+    │                           │                                │    ADMIN_PASSWORD_HASH=...    │
+    │                           │                                │───────────────────────────────►│
+    │                           │                                │◄───────────────────────────────│
+    │                           │                                │ 5. If match → Generate JWT    │
+    │                           │                                │    token (expires: 24h)       │
+    │                           │◄───────────────────────────────│                                │
+    │                           │    { token: "eyJhbG..." }      │                                │
+    │ 6. ✅ Redirect to Dashboard                                │                                │
+    │◄──────────────────────────│                                │                                │
+    │                           │ 7. Store token in localStorage │                                │
+
+
+
+
+FLOW 3: ADMIN CREATE USER TYPE
+─────────────────────────────────────────────────────────────────────────────
+تدفق المدير - إنشاء نوع مستخدم جديد
+
+المدير                      Frontend                         Backend                         Database
+    │                           │                                │                                │
+    │ 1. يفتح "إدارة الأنواع"    │                                │                                │
+    │──────────────────────────►│ 2. GET /api/v1/fields-master   │                                │
+    │                           │    (Header: Authorization)     │                                │
+    │                           │───────────────────────────────►│ 3. Verify JWT token           │
+    │                           │                                │ 4. SELECT * FROM fields_master│
+    │                           │                                │───────────────────────────────►│
+    │                           │                                │◄───────────────────────────────│
+    │                           │◄───────────────────────────────│                                │
+    │ 5. يرى كل الحقول المتاحة  │                                │                                │
+    │◄──────────────────────────│                                │                                │
+    │   ┌─────────────────────────────────────────────┐          │                                │
+    │   │ Type Name: [agent___________]               │          │                                │
+    │   │                                             │          │                                │
+    │   │ Select Fields:                              │          │                                │
+    │   │ ☑ name (text)           - Required ☑       │          │                                │
+    │   │ ☑ email (email)         - Required ☑       │          │                                │
+    │   │ ☑ phone (tel)           - Required ☐       │          │                                │
+    │   │ ☐ student_id (text)     - Required ☐       │          │                                │
+    │   │ ☑ license_number (text) - Required ☑       │          │                                │
+    │   │ ☑ company (text)        - Required ☐       │          │                                │
+    │   │ ☐ course (text)         - Required ☐       │          │                                │
+    │   │                                             │          │                                │
+    │   │              [Create Type]                  │          │                                │
+    │   └─────────────────────────────────────────────┘          │                                │
+    │                           │                                │                                │
+    │ 6. يحدد ويضغط Create      │                                │                                │
+    │──────────────────────────►│ 7. POST /api/v1/user-types     │                                │
+    │                           │    {                           │                                │
+    │                           │      type_name: "agent",       │                                │
+    │                           │      fields: [                 │                                │
+    │                           │        {field_id:1, required:true, order:1},                   │
+    │                           │        {field_id:2, required:true, order:2},                   │
+    │                           │        {field_id:3, required:false, order:3},                  │
+    │                           │        {field_id:5, required:true, order:4},                   │
+    │                           │        {field_id:6, required:false, order:5}                   │
+    │                           │      ]                         │                                │
+    │                           │    }                           │                                │
+    │                           │───────────────────────────────►│ 8. BEGIN TRANSACTION          │
+    │                           │                                │ 9. INSERT INTO user_types     │
+    │                           │                                │    (type_name, is_active)     │
+    │                           │                                │    VALUES ('agent', true)     │
+    │                           │                                │    RETURNING id               │
+    │                           │                                │───────────────────────────────►│
+    │                           │                                │◄── id = 3 ◄──────────────────│
+    │                           │                                │10. INSERT INTO user_type_fields│
+    │                           │                                │    (user_type_id, field_id,   │
+    │                           │                                │     is_required, field_order) │
+    │                           │                                │    VALUES                     │
+    │                           │                                │    (3, 1, true, 1),           │
+    │                           │                                │    (3, 2, true, 2),           │
+    │                           │                                │    (3, 3, false, 3),          │
+    │                           │                                │    (3, 5, true, 4),           │
+    │                           │                                │    (3, 6, false, 5)           │
+    │                           │                                │───────────────────────────────►│
+    │                           │                                │◄───────────────────────────────│
+    │                           │                                │11. COMMIT                     │
+    │                           │◄───────────────────────────────│                                │
+    │ 12. ✅ "تم إنشاء النوع"   │                                │                                │
+    │◄──────────────────────────│                                │                                │
+
+
+
+
+FLOW 4: ADMIN VIEW REQUESTS
+─────────────────────────────────────────────────────────────────────────────
+تدفق المدير - عرض الطلبات
+
+المدير                      Frontend                         Backend                         Database
+    │                           │                                │                                │
+    │ 1. يفتح "إدارة الطلبات"   │                                │                                │
+    │──────────────────────────►│ 2. GET /api/v1/requests        │                                │
+    │                           │    ?status=pending             │                                │
+    │                           │    (Header: Authorization)     │                                │
+    │                           │───────────────────────────────►│ 3. Verify JWT                 │
+    │                           │                                │ 4. SELECT r.*, ut.type_name   │
+    │                           │                                │    FROM requests r            │
+    │                           │                                │    JOIN user_types ut         │
+    │                           │                                │    ON r.user_type_id = ut.id  │
+    │                           │                                │    WHERE r.status = 'pending' │
+    │                           │                                │    ORDER BY r.created_at DESC │
+    │                           │                                │───────────────────────────────►│
+    │                           │                                │◄───────────────────────────────│
+    │                           │◄───────────────────────────────│                                │
+    │ 5. يرى قائمة الطلبات      │                                │                                │
+    │◄──────────────────────────│                                │                                │
+    │   ┌─────────────────────────────────────────────────────────────────┐                      │
+    │   │ Filter: [All ▼] [Pending ▼] [Approved ▼] [Rejected ▼]           │                      │
+    │   ├─────────────────────────────────────────────────────────────────┤                      │
+    │   │ # │ Type    │ Name      │ Email           │ Date       │ Action│                      │
+    │   ├───┼─────────┼───────────┼─────────────────┼────────────┼───────┤                      │
+    │   │ 1 │ student │ أحمد محمد │ ahmed@mail.com  │ 2026-01-25 │ [👁]  │                      │
+    │   │ 2 │ agent   │ سارة علي  │ sara@mail.com   │ 2026-01-25 │ [👁]  │                      │
+    │   │ 3 │ student │ خالد أحمد │ khaled@mail.com │ 2026-01-24 │ [👁]  │                      │
+    │   └─────────────────────────────────────────────────────────────────┘                      │
+
+
+
+
+FLOW 5: ADMIN APPROVE/REJECT REQUEST
+─────────────────────────────────────────────────────────────────────────────
+تدفق المدير - قبول أو رفض طلب
+
+المدير                      Frontend                         Backend                         Database
+    │                           │                                │                                │
+    │ 1. يضغط على طلب للعرض     │                                │                                │
+    │──────────────────────────►│                                │                                │
+    │ 2. يرى تفاصيل الطلب       │                                │                                │
+    │◄──────────────────────────│                                │                                │
+    │   ┌─────────────────────────────────────────────────────┐  │                                │
+    │   │ Request #1 - Type: student                          │  │                                │
+    │   │ Status: ⏳ Pending                                   │  │                                │
+    │   ├─────────────────────────────────────────────────────┤  │                                │
+    │   │ Name: أحمد محمد                                     │  │                                │
+    │   │ Email: ahmed@mail.com                               │  │                                │
+    │   │ Phone: 0501234567                                   │  │                                │
+    │   │ Student ID: STU001                                  │  │                                │
+    │   │ Course: Computer Science                            │  │                                │
+    │   ├─────────────────────────────────────────────────────┤  │                                │
+    │   │ Admin Notes:                                        │  │                                │
+    │   │ [مرحباً، تم قبول طلبك________________]              │  │                                │
+    │   │                                                     │  │                                │
+    │   │     [✓ Approve]     [✗ Reject]                      │  │                                │
+    │   └─────────────────────────────────────────────────────┘  │                                │
+    │                           │                                │                                │
+    │ 3. يكتب ملاحظة ويضغط ✓    │                                │                                │
+    │──────────────────────────►│ 4. PUT /api/v1/requests/1/status                               │
+    │                           │    {                           │                                │
+    │                           │      status: "approved",       │                                │
+    │                           │      admin_notes: "مرحباً..."  │                                │
+    │                           │    }                           │                                │
+    │                           │───────────────────────────────►│ 5. Verify JWT                 │
+    │                           │                                │ 6. UPDATE requests            │
+    │                           │                                │    SET status = 'approved',   │
+    │                           │                                │    admin_notes = 'مرحباً...'  │
+    │                           │                                │    WHERE id = 1               │
+    │                           │                                │───────────────────────────────►│
+    │                           │                                │◄───────────────────────────────│
+    │                           │                                │ 7. Get user email from data   │
+    │                           │                                │ 8. Send notification          │
+    │                           │                                │    (Email/WhatsApp)           │
+    │                           │◄───────────────────────────────│                                │
+    │ 9. ✅ "تم تحديث الحالة"   │                                │                                │
+    │◄──────────────────────────│                                │                                │
+
+
+                    ┌─────────────────────────────────────────┐
+                    │           NOTIFICATION SENT             │
+                    │                                         │
+                    │  To: ahmed@mail.com                     │
+                    │  Subject: تم قبول طلبك                  │
+                    │                                         │
+                    │  مرحباً أحمد محمد،                       │
+                    │  تم قبول طلبك للتسجيل كـ student.       │
+                    │  ملاحظات المدير: مرحباً...              │
+                    │                                         │
+                    └─────────────────────────────────────────┘
+
+
+
+
+FLOW 6: ADMIN EDIT USER TYPE
+─────────────────────────────────────────────────────────────────────────────
+تدفق المدير - تعديل نوع مستخدم
+
+المدير                      Frontend                         Backend                         Database
+    │                           │                                │                                │
+    │ 1. يفتح "إدارة الأنواع"   │                                │                                │
+    │──────────────────────────►│ 2. GET /api/v1/user-types      │                                │
+    │                           │───────────────────────────────►│ 3. SELECT ut.*,               │
+    │                           │                                │    COUNT(r.id) as requests    │
+    │                           │                                │    FROM user_types ut         │
+    │                           │                                │    LEFT JOIN requests r       │
+    │                           │                                │    ON ut.id = r.user_type_id  │
+    │                           │                                │    GROUP BY ut.id             │
+    │                           │                                │───────────────────────────────►│
+    │                           │                                │◄───────────────────────────────│
+    │                           │◄───────────────────────────────│                                │
+    │ 4. يرى قائمة الأنواع      │                                │                                │
+    │◄──────────────────────────│                                │                                │
+    │   ┌─────────────────────────────────────────────────────┐  │                                │
+    │   │ # │ Type Name │ Fields │ Requests │ Status │ Action │  │                                │
+    │   ├───┼───────────┼────────┼──────────┼────────┼────────┤  │                                │
+    │   │ 1 │ student   │ 5      │ 25       │ Active │ [✏][🗑]│  │                                │
+    │   │ 2 │ agent     │ 5      │ 12       │ Active │ [✏][🗑]│  │                                │
+    │   │ 3 │ teacher   │ 4      │ 8        │ Active │ [✏][🗑]│  │                                │
+    │   └─────────────────────────────────────────────────────┘  │                                │
+    │                           │                                │                                │
+    │ 5. يضغط ✏ على agent       │                                │                                │
+    │──────────────────────────►│ 6. GET /api/v1/user-types/2    │                                │
+    │                           │───────────────────────────────►│ 7. SELECT with fields         │
+    │                           │                                │───────────────────────────────►│
+    │                           │◄───────────────────────────────│◄───────────────────────────────│
+    │ 8. يرى نموذج التعديل      │                                │                                │
+    │◄──────────────────────────│                                │                                │
+    │   (يعدل الحقول)           │                                │                                │
+    │──────────────────────────►│ 9. PUT /api/v1/user-types/2    │                                │
+    │                           │───────────────────────────────►│10. UPDATE + DELETE + INSERT   │
+    │                           │                                │───────────────────────────────►│
+    │                           │◄───────────────────────────────│◄───────────────────────────────│
+    │11. ✅ "تم التحديث"        │                                │                                │
+    │◄──────────────────────────│                                │                                │
+
+
+
+
+═══════════════════════════════════════════════════════════════════════════════
+                              SYSTEM OVERVIEW
+                              نظرة عامة على النظام
+═══════════════════════════════════════════════════════════════════════════════
+
+
+                    ┌─────────────────────────────────────────────────────────┐
+                    │                      SYSTEM OVERVIEW                     │
+                    └─────────────────────────────────────────────────────────┘
+
+     ┌──────────────────────────────────┐     ┌──────────────────────────────────┐
+     │           المستخدم               │     │            المدير                │
+     └───────────────┬──────────────────┘     └───────────────┬──────────────────┘
+                     │                                        │
+                     ▼                                        ▼
+     ┌───────────────────────────────┐        ┌───────────────────────────────┐
+     │     صفحة إنشاء الطلب          │        │        لوحة التحكم            │
+     │  ┌─────────────────────────┐  │        │  ┌─────────────────────────┐  │
+     │  │ 1. اختيار النوع         │  │        │  │ • إدارة الأنواع         │  │
+     │  │ 2. ملء الحقول           │  │        │  │ • إدارة الطلبات         │  │
+     │  │ 3. إرسال                │  │        │  │ • الإحصائيات            │  │
+     │  └─────────────────────────┘  │        │  └─────────────────────────┘  │
+     └───────────────┬───────────────┘        └───────────────┬───────────────┘
+                     │                                        │
+                     │         ┌──────────────────┐           │
+                     └────────►│     Backend      │◄──────────┘
+                               │   Node/Express   │
+                               │                  │
+                               │  • Auth (JWT)    │
+                               │  • Validation    │
+                               │  • CRUD APIs     │
+                               │  • Notifications │
+                               └────────┬─────────┘
+                                        │
+                                        ▼
+                    ┌─────────────────────────────────────────┐
+                    │              PostgreSQL                  │
+                    │  ┌─────────────────────────────────────┐│
+                    │  │ fields_master   │ user_types        ││
+                    │  │ user_type_fields│ requests          ││
+                    │  └─────────────────────────────────────┘│
+                    └─────────────────────────────────────────┘
+
+
+═══════════════════════════════════════════════════════════════════════════════
+                              DATA EXAMPLES
+                              أمثلة على البيانات
+═══════════════════════════════════════════════════════════════════════════════
+
+
+fields_master:
+┌────┬───────────────┬────────────────┬────────────┬─────────────────────────┐
+│ id │ field_name    │ field_label    │ field_type │ field_options           │
+├────┼───────────────┼────────────────┼────────────┼─────────────────────────┤
+│ 1  │ name          │ الاسم الكامل   │ text       │ null                    │
+│ 2  │ email         │ البريد الإلكتروني │ email      │ null                    │
+│ 3  │ phone         │ رقم الهاتف     │ tel        │ null                    │
+│ 4  │ student_id    │ الرقم الجامعي  │ text       │ null                    │
+│ 5  │ license_number│ رقم الرخصة     │ text       │ null                    │
+│ 6  │ company       │ الشركة         │ text       │ null                    │
+│ 7  │ course        │ التخصص         │ dropdown   │ ["CS","Engineering",...] │
+│ 8  │ experience    │ سنوات الخبرة   │ number     │ null                    │
+└────┴───────────────┴────────────────┴────────────┴─────────────────────────┘
+
+
+user_types:
+┌────┬───────────┬───────────┬─────────────────────┐
+│ id │ type_name │ is_active │ created_at          │
+├────┼───────────┼───────────┼─────────────────────┤
+│ 1  │ student   │ true      │ 2026-01-01 10:00:00 │
+│ 2  │ agent     │ true      │ 2026-01-05 14:30:00 │
+│ 3  │ teacher   │ true      │ 2026-01-10 09:15:00 │
+└────┴───────────┴───────────┴─────────────────────┘
+
+
+user_type_fields:
+┌────┬──────────────┬──────────┬─────────────┬─────────────┐
+│ id │ user_type_id │ field_id │ is_required │ field_order │
+├────┼──────────────┼──────────┼─────────────┼─────────────┤
+│ 1  │ 1 (student)  │ 1 (name) │ true        │ 1           │
+│ 2  │ 1 (student)  │ 2 (email)│ true        │ 2           │
+│ 3  │ 1 (student)  │ 3 (phone)│ false       │ 3           │
+│ 4  │ 1 (student)  │ 4 (stud) │ true        │ 4           │
+│ 5  │ 1 (student)  │ 7 (course)│ true       │ 5           │
+│ 6  │ 2 (agent)    │ 1 (name) │ true        │ 1           │
+│ 7  │ 2 (agent)    │ 2 (email)│ true        │ 2           │
+│ 8  │ 2 (agent)    │ 5 (lic)  │ true        │ 3           │
+│ 9  │ 2 (agent)    │ 6 (comp) │ false       │ 4           │
+└────┴──────────────┴──────────┴─────────────┴─────────────┘
+
+
+requests:
+┌────┬──────────────┬─────────────────────────────────────────────────┬──────────┬─────────────────┐
+│ id │ user_type_id │ data (JSONB)                                    │ status   │ admin_notes     │
+├────┼──────────────┼─────────────────────────────────────────────────┼──────────┼─────────────────┤
+│ 1  │ 1 (student)  │ {"name":"أحمد","email":"a@mail.com",            │ approved │ "مرحباً بك"     │
+│    │              │  "phone":"050...","student_id":"STU001",        │          │                 │
+│    │              │  "course":"CS"}                                 │          │                 │
+├────┼──────────────┼─────────────────────────────────────────────────┼──────────┼─────────────────┤
+│ 2  │ 2 (agent)    │ {"name":"سارة","email":"s@mail.com",            │ pending  │ null            │
+│    │              │  "license_number":"AG001","company":"شركة"}     │          │                 │
+├────┼──────────────┼─────────────────────────────────────────────────┼──────────┼─────────────────┤
+│ 3  │ 1 (student)  │ {"name":"خالد","email":"k@mail.com",            │ rejected │ "بيانات ناقصة"  │
+│    │              │  "student_id":"STU002","course":"ENG"}          │          │                 │
+└────┴──────────────┴─────────────────────────────────────────────────┴──────────┴─────────────────┘
+
+
+═══════════════════════════════════════════════════════════════════════════════
+                            LOGGING SYSTEM (BASIC)
+                              نظام السجلات البسيط
+═══════════════════════════════════════════════════════════════════════════════
+
+LOGGING OVERVIEW
+─────────────────────────────────────────────────────────────────────────────
+
+
+
+LOGGING SERVICE (WINSTON)
+─────────────────────────────────────────────────────────────────────────────
+
+ملفات السجلات:
+  
+  logs/
+  ├── error.log      - جميع رسائل الخطأ (مع stack trace)
+  └── combined.log   - جميع السجلات (info + error + warning)
+
+مستويات السجل:
+  
+  • error   - أخطاء في التطبيق (فشل قاعدة البيانات، خطأ في المنطق)
+  • warn    - تحذيرات (محاولة تسجيل دخول فاشلة، عملية غير متوقعة)
+  • info    - معلومات عادية (إنشاء طلب، تحديث حالة، جميع إجراءات المدير)
+
+
+WHAT GETS LOGGED
+─────────────────────────────────────────────────────────────────────────────
+
+📝 إجراءات المستخدم:
+   - إنشاء طلب جديد (requestId, userTypeId, email)
+   
+📝 إجراءات المدير:
+   - تسجيل الدخول (admin email, IP, timestamp)
+   - إنشاء نوع مستخدم جديد (typeId, typeName, fieldsCount)
+   - تعديل نوع مستخدم (typeId, typeName)
+   - حذف نوع مستخدم (typeId, typeName)
+   - الموافقة على طلب (requestId, oldStatus → newStatus, adminNotes)
+   - رفض طلب (requestId, oldStatus → newStatus, adminNotes)
+   
+📝 أخطاء النظام:
+   - فشل الاتصال بقاعدة البيانات
+   - خطأ في إرسال الإشعارات
+   - خطأ في التحقق من البيانات
+
+
+LOG EXAMPLES
+─────────────────────────────────────────────────────────────────────────────
+
+logs/combined.log:
+─────────────────────────────────────────────────────────────────────────────
+
+[2026-01-29 08:30:00] [info] New request created {"requestId":1,"userTypeId":1,"email":"ahmed@mail.com"}
+[2026-01-29 09:15:30] [info] Admin login successful {"admin":"admin@site.com","ip":"192.168.1.100"}
+[2026-01-29 09:20:45] [info] User type created {"admin":"admin@site.com","typeId":2,"typeName":"agent","fieldsCount":5}
+[2026-01-29 10:00:15] [info] Request status updated {"admin":"admin@site.com","requestId":1,"oldStatus":"pending","newStatus":"approved","notes":"مرحباً بك"}
+[2026-01-29 10:30:22] [info] Request status updated {"admin":"admin@site.com","requestId":3,"oldStatus":"pending","newStatus":"rejected","notes":"بيانات ناقصة"}
+[2026-01-29 11:45:10] [info] User type updated {"admin":"admin@site.com","typeId":1,"typeName":"student"}
+[2026-01-29 14:20:00] [info] User type deleted {"admin":"admin@site.com","typeId":3,"typeName":"teacher"}
+[2026-01-29 15:05:33] [warn] Failed login attempt {"email":"wrong@mail.com","ip":"192.168.1.150"}
+
+
+logs/error.log:
+─────────────────────────────────────────────────────────────────────────────
+
+[2026-01-29 10:45:00] [error] Error sending notification {"email":"user@mail.com","error":"SMTP connection failed"}
+[2026-01-29 12:30:15] [error] Database query failed {"query":"SELECT * FROM requests","error":"Connection timeout"}
+
+
+LOGGER SERVICE CODE
+─────────────────────────────────────────────────────────────────────────────
+
+backend/services/loggerService.js:
+
+const winston = require('winston');
+const path = require('path');
+
+const logger = winston.createLogger({
+  level: 'info',
+  format: winston.format.combine(
+    winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
+    winston.format.json()
+  ),
+  transports: [
+    new winston.transports.File({ 
+      filename: path.join(__dirname, '../logs/error.log'), 
+      level: 'error' 
+    }),
+    new winston.transports.File({ 
+      filename: path.join(__dirname, '../logs/combined.log') 
+    }),
+    new winston.transports.Console({
+      format: winston.format.simple()
+    })
+  ]
+});
+
+module.exports = logger;
+
+
+HOW TO USE IN CONTROLLERS
+─────────────────────────────────────────────────────────────────────────────
+
+const logger = require('../services/loggerService');
+
+// في requestController.js - عند إنشاء طلب
+logger.info('New request created', {
+  requestId: result.rows[0].id,
+  userTypeId: user_type_id,
+  email: data.email
+});
+
+// في requestController.js - عند تحديث حالة الطلب
+logger.info('Request status updated', {
+  admin: adminId,
+  requestId: id,
+  oldStatus: oldRequest.status,
+  newStatus: status,
+  notes: admin_notes
+});
+
+// في userTypeController.js - عند إنشاء نوع جديد
+logger.info('User type created', {
+  admin: adminId,
+  typeId: typeResult.rows[0].id,
+  typeName: type_name,
+  fieldsCount: fields.length
+});
+
+// في authController.js - عند تسجيل الدخول
+logger.info('Admin login successful', {
+  admin: email,
+  ip: req.ip
+});
+
+// عند حدوث خطأ
+logger.error('Error creating request', {
+  error: error.message,
+  stack: error.stack
+});
+
+
+FILE STRUCTURE
+─────────────────────────────────────────────────────────────────────────────
+
+backend/
+├── logs/                      # مجلد السجلات
+│   ├── error.log             # أخطاء فقط
+│   └── combined.log          # جميع السجلات
+├── services/
+│   └── loggerService.js      # خدمة السجلات (Winston)
+├── controllers/
+│   ├── requestController.js  # مع logging
+│   ├── userTypeController.js # مع logging
+│   └── authController.js     # مع logging
+└── .gitignore                # إضافة logs/ لتجاهله
+
+
+BENEFITS
+─────────────────────────────────────────────────────────────────────────────
+
+✅ بسيط جداً - لا حاجة لجداول إضافية
+✅ سهل القراءة - كل شيء في ملفات نصية
+✅ خفيف على قاعدة البيانات - لا استعلامات إضافية
+✅ سهل البحث - يمكن استخدام grep أو أي محرر نص
+✅ تلقائي - لا حاجة لـ APIs خاصة بالتدقيق
+
+
+═══════════════════════════════════════════════════════════════════════════════
+                      DATABASE MANAGEMENT & BACKUP
+                       إدارة قاعدة البيانات والنسخ الاحتياطي
+═══════════════════════════════════════════════════════════════════════════════
+
+DATABASE MANAGEMENT OVERVIEW
+─────────────────────────────────────────────────────────────────────────────
+
+نظام لإدارة قاعدة البيانات والنسخ الاحتياطي والاستعادة (Admin فقط)
+
+الميزات الرئيسية:
+  ✅ إنشاء نسخة احتياطية من قاعدة البيانات
+  ✅ استعادة قاعدة البيانات من نسخة احتياطية
+  ✅ حذف النسخ الاحتياطية القديمة
+  ✅ فحص صحة قاعدة البيانات
+  ✅ عرض إحصائيات قاعدة البيانات
+  ✅ نسخ احتياطية تلقائية (يومياً)
+
+
+DATABASE BACKUP API ENDPOINTS
+─────────────────────────────────────────────────────────────────────────────
+
+Method          Endpoint                            الوصف
+───────────────────────────────────────────────────────────────────────────────
+POST            /api/v1/database/backup             إنشاء نسخة احتياطية جديدة
+GET             /api/v1/database/backups            عرض قائمة النسخ الاحتياطية
+POST            /api/v1/database/restore/:filename  استعادة من نسخة احتياطية
+DELETE          /api/v1/database/backup/:filename   حذف نسخة احتياطية
+GET             /api/v1/database/health             فحص صحة قاعدة البيانات
+GET             /api/v1/database/stats              إحصائيات قاعدة البيانات
+
+
+FLOW 7: ADMIN CREATE DATABASE BACKUP
+─────────────────────────────────────────────────────────────────────────────
+تدفق المدير - إنشاء نسخة احتياطية
+
+المدير                      Frontend                         Backend                         File System
+    │                           │                                │                                │
+    │ 1. يفتح "إدارة النسخ"     │                                │                                │
+    │──────────────────────────►│ 2. POST /database/backup       │                                │
+    │                           │    (Header: Authorization)     │                                │
+    │                           │───────────────────────────────►│ 3. Verify JWT                 │
+    │                           │                                │ 4. Generate filename          │
+    │                           │                                │    backup_2026-01-29T10-30.sql│
+    │                           │                                │ 5. Run pg_dump command        │
+    │                           │                                │    (export all database)      │
+    │                           │                                │───────────────────────────────►│
+    │                           │                                │    ┌────────────────────────┐ │
+    │                           │                                │    │ Creating backup file... │ │
+    │                           │                                │    │ • Export tables         │ │
+    │                           │                                │    │ • Export data           │ │
+    │                           │                                │    │ • Export sequences      │ │
+    │                           │                                │    └────────────────────────┘ │
+    │                           │                                │◄───────────────────────────────│
+    │                           │                                │ 6. Compress file (gzip)       │
+    │                           │                                │    backup...sql → .sql.gz     │
+    │                           │                                │───────────────────────────────►│
+    │                           │                                │◄───────────────────────────────│
+    │                           │                                │ 7. Get file size & info       │
+    │                           │                                │ 8. Log to combined.log        │
+    │                           │◄───────────────────────────────│                                │
+    │                           │    {                           │                                │
+    │                           │      filename: "backup...gz",  │                                │
+    │                           │      size: "2.5 MB",           │                                │
+    │                           │      created_at: "2026-01-29"  │                                │
+    │                           │    }                           │                                │
+    │ 9. ✅ "تم إنشاء النسخة"   │                                │                                │
+    │◄──────────────────────────│                                │                                │
+
+
+FLOW 8: ADMIN VIEW BACKUPS LIST
+─────────────────────────────────────────────────────────────────────────────
+تدفق المدير - عرض قائمة النسخ الاحتياطية
+
+المدير                      Frontend                         Backend                      File System
+    │                           │                                │                                │
+    │ 1. يفتح "النسخ الاحتياطية"│                                │                                │
+    │──────────────────────────►│ 2. GET /database/backups       │                                │
+    │                           │───────────────────────────────►│ 3. Read backups/ folder       │
+    │                           │                                │───────────────────────────────►│
+    │                           │                                │    ┌────────────────────────┐ │
+    │                           │                                │    │ backups/               │ │
+    │                           │                                │    │ ├─ backup_2026-01-29.gz│ │
+    │                           │                                │    │ ├─ backup_2026-01-28.gz│ │
+    │                           │                                │    │ └─ backup_2026-01-27.gz│ │
+    │                           │                                │    └────────────────────────┘ │
+    │                           │                                │◄───────────────────────────────│
+    │                           │                                │ 4. Get each file info         │
+    │                           │                                │    (size, date, name)         │
+    │                           │◄───────────────────────────────│                                │
+    │ 5. يرى قائمة النسخ        │                                │                                │
+    │◄──────────────────────────│                                │                                │
+    │   ┌─────────────────────────────────────────────────────────────┐                          │
+    │   │ النسخ الاحتياطية                                             │                          │
+    │   ├─────────────────────────────────────────────────────────────┤                          │
+    │   │ File Name                    │ Size   │ Date       │ Action│                          │
+    │   ├──────────────────────────────┼────────┼────────────┼───────┤                          │
+    │   │ backup_2026-01-29T10-30.gz   │ 2.5 MB │ 2026-01-29 │ [↓][🗑]│                          │
+    │   │ backup_2026-01-28T02-00.gz   │ 2.3 MB │ 2026-01-28 │ [↓][🗑]│                          │
+    │   │ backup_2026-01-27T02-00.gz   │ 2.2 MB │ 2026-01-27 │ [↓][🗑]│                          │
+    │   │                                                             │                          │
+    │   │              [+ Create New Backup]                          │                          │
+    │   └─────────────────────────────────────────────────────────────┘                          │
+
+
+FLOW 9: ADMIN RESTORE DATABASE
+─────────────────────────────────────────────────────────────────────────────
+تدفق المدير - استعادة قاعدة البيانات
+
+المدير                      Frontend                         Backend                      File System/Database
+    │                           │                                │                                │
+    │ 1. يختار نسخة احتياطية   │                                │                                │
+    │ 2. يضغط "استعادة" [↓]     │                                │                                │
+    │──────────────────────────►│ 3. تأكيد "هل أنت متأكد؟"       │                                │
+    │◄──────────────────────────│    ⚠️ سيتم حذف البيانات الحالية│                                │
+    │ 4. يؤكد                  │                                │                                │
+    │──────────────────────────►│ 5. POST /restore/:filename     │                                │
+    │                           │───────────────────────────────►│ 6. Find backup file           │
+    │                           │                                │───────────────────────────────►│
+    │                           │                                │◄───────────────────────────────│
+    │                           │                                │ 7. Decompress if .gz          │
+    │                           │                                │    .sql.gz → .sql             │
+    │                           │                                │ 8. Run pg_restore command     │
+    │                           │                                │───────────────────────────────►│
+    │                           │                                │    ┌────────────────────────┐ │
+    │                           │                                │    │ Restoring database...  │ │
+    │                           │                                │    │ • Drop old tables      │ │
+    │                           │                                │    │ • Create tables        │ │
+    │                           │                                │    │ • Import data          │ │
+    │                           │                                │    │ • Restore sequences    │ │
+    │                           │                                │    └────────────────────────┘ │
+    │                           │                                │◄───────────────────────────────│
+    │                           │                                │ 9. Clean temp files           │
+    │                           │                                │10. Log to combined.log        │
+    │                           │◄───────────────────────────────│                                │
+    │11. ✅ "تمت الاستعادة"     │                                │                                │
+    │◄──────────────────────────│                                │                                │
+
+
+FLOW 10: DATABASE HEALTH CHECK
+─────────────────────────────────────────────────────────────────────────────
+تدفق فحص صحة قاعدة البيانات
+
+المدير                      Frontend                         Backend                         Database
+    │                           │                                │                                │
+    │ 1. يفتح لوحة المراقبة     │                                │                                │
+    │──────────────────────────►│ 2. GET /database/health        │                                │
+    │                           │───────────────────────────────►│ 3. Test connection            │
+    │                           │                                │    SELECT NOW()               │
+    │                           │                                │───────────────────────────────►│
+    │                           │                                │◄───────────────────────────────│
+    │                           │                                │ 4. Count active connections   │
+    │                           │                                │    SELECT FROM pg_stat_activity│
+    │                           │                                │───────────────────────────────►│
+    │                           │                                │◄───────────────────────────────│
+    │                           │◄───────────────────────────────│                                │
+    │ 5. يرى حالة قاعدة البيانات│                                │                                │
+    │◄──────────────────────────│                                │                                │
+    │   ┌────────────────────────────────────┐                   │                                │
+    │   │ 🟢 Database Status: Healthy        │                   │                                │
+    │   ├────────────────────────────────────┤                   │                                │
+    │   │ Database: request_management       │                   │                                │
+    │   │ Current Time: 2026-01-29 10:30:00  │                   │                                │
+    │   │ Active Connections: 5              │                   │                                │
+    │   │ Response Time: 12ms                │                   │                                │
+    │   └────────────────────────────────────┘                   │                                │
+
+
+FLOW 11: DATABASE STATISTICS
+─────────────────────────────────────────────────────────────────────────────
+تدفق إحصائيات قاعدة البيانات
+
+المدير                      Frontend                         Backend                         Database
+    │                           │                                │                                │
+    │ 1. يفتح "الإحصائيات"      │                                │                                │
+    │──────────────────────────►│ 2. GET /database/stats         │                                │
+    │                           │───────────────────────────────►│ 3. Query all statistics       │
+    │                           │                                │                                │
+    │                           │                                │ ─► COUNT requests (all)       │
+    │                           │                                │ ─► COUNT requests (pending)   │
+    │                           │                                │ ─► COUNT requests (approved)  │
+    │                           │                                │ ─► COUNT requests (rejected)  │
+    │                           │                                │ ─► COUNT user_types           │
+    │                           │                                │ ─► COUNT fields_master        │
+    │                           │                                │ ─► Get database size          │
+    │                           │                                │───────────────────────────────►│
+    │                           │                                │◄───────────────────────────────│
+    │                           │◄───────────────────────────────│                                │
+    │ 4. يرى الإحصائيات كاملة   │                                │                                │
+    │◄──────────────────────────│                                │                                │
+    │   ┌──────────────────────────────────────────────────────┐ │                                │
+    │   │ 📊 Database Statistics                               │ │                                │
+    │   ├──────────────────────────────────────────────────────┤ │                                │
+    │   │ Database: request_management                         │ │                                │
+    │   │ Total Size: 25.3 MB                                  │ │                                │
+    │   │                                                      │ │                                │
+    │   │ 📋 Requests:                                         │ │                                │
+    │   │   • Total: 150                                       │ │                                │
+    │   │   • Pending: 25  (17%)  ⏳                           │ │                                │
+    │   │   • Approved: 100 (67%) ✅                           │ │                                │
+    │   │   • Rejected: 25  (17%) ❌                           │ │                                │
+    │   │                                                      │ │                                │
+    │   │ 👥 User Types: 5                                     │ │                                │
+    │   │ 📝 Fields Master: 15                                 │ │                                │
+    │   └──────────────────────────────────────────────────────┘ │                                │
+
+
+AUTOMATED BACKUP PROCESS
+─────────────────────────────────────────────────────────────────────────────
+
+نظام النسخ الاحتياطي التلقائي - يعمل يومياً في الساعة 2:00 صباحاً
+
+    ┌─────────────────────────────────────────────────────────────┐
+    │                    CRON JOB SCHEDULER                        │
+    │                    (Every day at 2:00 AM)                    │
+    └───────────────────────────┬─────────────────────────────────┘
+                                │
+                                ▼
+                    ┌───────────────────────┐
+                    │ 1. Start Backup Job   │
+                    │    Log: "Starting..." │
+                    └───────────┬───────────┘
+                                │
+                                ▼
+                    ┌───────────────────────┐
+                    │ 2. Create New Backup  │
+                    │    • pg_dump          │
+                    │    • Compress (gzip)  │
+                    │    • Save to backups/ │
+                    └───────────┬───────────┘
+                                │
+                                ▼
+                    ┌───────────────────────┐
+                    │ 3. Get All Backups    │
+                    │    List from folder   │
+                    └───────────┬───────────┘
+                                │
+                                ▼
+                    ┌───────────────────────┐
+                    │ 4. Check Each Backup  │
+                    │    Age > 30 days?     │
+                    └───────────┬───────────┘
+                                │
+                ┌───────────────┴───────────────┐
+                ▼                               ▼
+    ┌───────────────────┐           ┌───────────────────┐
+    │ Yes: Delete Old   │           │ No: Keep Backup   │
+    │   Log: "Deleted"  │           │                   │
+    └───────────────────┘           └───────────────────┘
+                │                               │
+                └───────────────┬───────────────┘
+                                │
+                                ▼
+                    ┌───────────────────────┐
+                    │ 5. Complete           │
+                    │    Log: "Done"        │
+                    └───────────────────────┘
+
+
+BACKUP FILE STRUCTURE
+─────────────────────────────────────────────────────────────────────────────
+
+backend/
+├── backups/                                  # مجلد النسخ الاحتياطية
+│   ├── backup_2026-01-29T10-30-00.sql.gz    # نسخة احتياطية (مضغوطة)
+│   ├── backup_2026-01-28T02-00-00.sql.gz    # نسخة تلقائية يومية
+│   ├── backup_2026-01-27T02-00-00.sql.gz
+│   └── .gitignore                           # تجاهل الملفات في git
+│
+├── logs/
+│   └── combined.log                         # سجل العمليات
+│       [2026-01-29 02:00:00] [info] Starting automated backup...
+│       [2026-01-29 02:00:15] [info] Backup created: backup_2026-01-29T02-00.sql.gz
+│       [2026-01-29 02:00:16] [info] Old backup deleted: backup_2025-12-29...
+│
+└── services/
+    └── databaseService.js                   # منطق النسخ الاحتياطي
+
+
+BACKUP LIFECYCLE DIAGRAM
+─────────────────────────────────────────────────────────────────────────────
+
+    Day 1              Day 2              Day 3              Day 31
+      │                  │                  │                  │
+      ▼                  ▼                  ▼                  ▼
+  ┌────────┐        ┌────────┐        ┌────────┐        ┌────────┐
+  │Backup 1│        │Backup 2│        │Backup 3│        │Backup31│
+  │2.5 MB  │───────►│2.3 MB  │───────►│2.4 MB  │───────►│2.6 MB  │
+  └────────┘        └────────┘        └────────┘        └────────┘
+      │                  │                  │                  │
+      │                  │                  │                  ▼
+      │                  │                  │            ┌──────────┐
+      │                  │                  │            │ Day 32   │
+      │                  │                  │            │ Create   │
+      │                  │                  │            │ Backup32 │
+      │                  │                  │            └─────┬────┘
+      │                  │                  │                  │
+      ▼                  ▼                  ▼                  ▼
+  ┌────────────────────────────────────────────────────────────┐
+  │          RETENTION POLICY: 30 DAYS                         │
+  │  After 30 days → Backup 1 is automatically deleted 🗑      │
+  └────────────────────────────────────────────────────────────┘
+
+
+SECURITY & BEST PRACTICES
+─────────────────────────────────────────────────────────────────────────────
+
+🔒 SECURITY MEASURES:
+
+  1. Admin Authentication Required
+     ├─ All backup endpoints require valid JWT token
+     └─ Only admin can create, restore, or delete backups
+
+  2. File Storage Security
+     ├─ Backups stored outside public directory
+     ├─ Added to .gitignore (never commit backups)
+     └─ Optional: Encrypt backups for sensitive data
+
+  3. Access Logging
+     ├─ All backup operations logged
+     ├─ Track who created/restored/deleted backups
+     └─ IP address and timestamp recorded
+
+  4. Backup Retention
+     ├─ Auto-delete backups older than 30 days
+     ├─ Configurable retention period
+     └─ Prevents disk space issues
+
+  5. Cloud Storage (Recommended)
+     ├─ Upload backups to AWS S3, Azure Blob, etc.
+     ├─ Off-site disaster recovery
+     └─ Redundancy and availability
+
+
+⚡ BEST PRACTICES:
+
+  ✅ Schedule backups during low-traffic hours (2:00 AM)
+  ✅ Test restore process regularly
+  ✅ Monitor backup file sizes
+  ✅ Keep multiple backup versions
+  ✅ Store backups in different locations
+  ✅ Compress backups to save space
+  ✅ Document restore procedures
+  ✅ Set up alerts for backup failures
+
+
+BENEFITS
+─────────────────────────────────────────────────────────────────────────────
+
+✅ نسخ احتياطي كامل لقاعدة البيانات (جداول + بيانات + تسلسلات)
+✅ استعادة سريعة في حالة فقدان البيانات أو الأخطاء
+✅ حذف النسخ القديمة تلقائياً (توفير المساحة)
+✅ فحص صحة قاعدة البيانات والاتصالات
+✅ إحصائيات مفصلة عن البيانات
+✅ ضغط الملفات (gzip) لتوفير المساحة
+✅ سجلات لجميع العمليات
+✅ نسخ احتياطية مجدولة تلقائياً (يومياً)
+
+
+═══════════════════════════════════════════════════════════════════════════════
