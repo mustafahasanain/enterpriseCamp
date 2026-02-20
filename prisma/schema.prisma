@@ -1,0 +1,79 @@
+// ──────────────────────────────────────────────────────────
+// Prisma Schema — Enterprise Request Management System
+// Database: PostgreSQL
+// ──────────────────────────────────────────────────────────
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── 1. Master Field Catalog ──────────────────────────────
+model FieldsMaster {
+  id           Int      @id @default(autoincrement())
+  fieldName    String   @unique @map("field_name") @db.VarChar(100)
+  fieldLabel   String   @map("field_label") @db.VarChar(150)
+  fieldType    String   @map("field_type") @db.VarChar(50)
+  fieldOptions Json?    @map("field_options") @db.JsonB
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz()
+
+  // Relations
+  userTypeFields UserTypeField[]
+
+  @@map("fields_master")
+}
+
+// ─── 2. User Type Registry ────────────────────────────────
+model UserType {
+  id        Int      @id @default(autoincrement())
+  typeName  String   @unique @map("type_name") @db.VarChar(100)
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz()
+
+  // Relations
+  userTypeFields UserTypeField[]
+  requests       Request[]
+
+  @@index([isActive], map: "idx_user_types_is_active")
+  @@map("user_types")
+}
+
+// ─── 3. Field Assignments per User Type ───────────────────
+model UserTypeField {
+  id         Int     @id @default(autoincrement())
+  userTypeId Int     @map("user_type_id")
+  fieldId    Int     @map("field_id")
+  isRequired Boolean @default(false) @map("is_required")
+  fieldOrder Int     @default(0) @map("field_order")
+
+  // Relations
+  userType     UserType     @relation(fields: [userTypeId], references: [id], onDelete: Cascade)
+  fieldsMaster FieldsMaster @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+
+  @@unique([userTypeId, fieldId])
+  @@index([userTypeId], map: "idx_utf_user_type_id")
+  @@map("user_type_fields")
+}
+
+// ─── 4. Submitted User Requests ───────────────────────────
+model Request {
+  id         Int      @id @default(autoincrement())
+  userTypeId Int      @map("user_type_id")
+  data       Json     @db.JsonB
+  status     String   @default("pending") @db.VarChar(20)
+  adminNotes String?  @map("admin_notes") @db.Text
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt  DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz()
+
+  // Relations
+  userType UserType @relation(fields: [userTypeId], references: [id], onDelete: Restrict)
+
+  @@index([status], map: "idx_requests_status")
+  @@index([userTypeId], map: "idx_requests_user_type_id")
+  @@map("requests")
+}

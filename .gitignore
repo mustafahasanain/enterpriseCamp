@@ -1,0 +1,47 @@
+# ─── Dependencies ─────────────────────────────────────────
+node_modules/
+
+# ─── Environment Variables ────────────────────────────────
+.env
+.env.local
+.env.*.local
+src/.env
+
+# ─── Logs ─────────────────────────────────────────────────
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ─── Prisma ───────────────────────────────────────────────
+# Keep: prisma/schema.prisma, prisma/migrations/
+# Ignore: generated client (regenerated via db:generate)
+src/db/generated/
+node_modules/.prisma/
+
+# ─── Build Output ─────────────────────────────────────────
+dist/
+build/
+
+# ─── OS ───────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# ─── IDE / Editor ─────────────────────────────────────────
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# ─── Testing ──────────────────────────────────────────────
+coverage/
+.nyc_output/
+
+# ─── Misc ─────────────────────────────────────────────────
+*.pem
+*.key
