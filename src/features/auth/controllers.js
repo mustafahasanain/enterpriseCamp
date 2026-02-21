@@ -14,6 +14,7 @@ const adminLogin = async (req, res) => {
         return res.status(400).json({
             success: false,
             error: "Email and password are required",
+            message: "Please provide both email and password",
         });
     }
 
@@ -25,19 +26,28 @@ const adminLogin = async (req, res) => {
 
         // Guard: env vars must be configured
         if (!adminEmail || !adminPasswordHash || !jwtSecret) {
-            log.error("Missing admin credentials or JWT secret in environment");
+            log.error("Missing environment variables", {
+                action: "admin_login_config_error",
+                timestamp: new Date().toISOString(),
+            });
             return res.status(500).json({
                 success: false,
-                error: "An error occurred during authentication",
+                error: "Authentication service unavailable",
+                message: "Server configuration error",
             });
         }
 
-        // Check email — always use generic message to avoid leaking which field failed (BR-002)
+        // Check email — use generic message to avoid leaking which field failed (BR-002)
         if (email !== adminEmail) {
-            log.warn("Failed login attempt — invalid email", { email, ip: clientIp });
+            log.warn("Failed login — email mismatch", {
+                action: "admin_login_failed",
+                ip_address: clientIp,
+                timestamp: new Date().toISOString(),
+            });
             return res.status(401).json({
                 success: false,
-                error: "Invalid email or password",
+                error: "Invalid credentials",
+                message: "Please check your email and password",
             });
         }
 
@@ -45,33 +55,53 @@ const adminLogin = async (req, res) => {
         const passwordValid = await bcrypt.compare(password, adminPasswordHash);
 
         if (!passwordValid) {
-            log.warn("Failed login attempt — invalid password", { email, ip: clientIp });
+            log.warn("Failed login — password mismatch", {
+                action: "admin_login_failed",
+                ip_address: clientIp,
+                timestamp: new Date().toISOString(),
+            });
             return res.status(401).json({
                 success: false,
-                error: "Invalid email or password",
+                error: "Invalid credentials",
+                message: "Please check your email and password",
             });
         }
 
-        // Generate JWT token (UC-001 step 9)
+        // Generate JWT (UC-001 step 9)
         const token = jwt.sign(
             { email: adminEmail, role: "admin" },
             jwtSecret,
             { expiresIn: jwtExpiresIn }
         );
 
-        log.info("Admin login successful", { admin: adminEmail, ip: clientIp });
+        log.info("Admin login successful", {
+            action: "admin_login_success",
+            ip_address: clientIp,
+            timestamp: new Date().toISOString(),
+        });
 
         return res.status(200).json({
             success: true,
+            message: "Login successful",
             token,
             expiresIn: jwtExpiresIn,
+            admin: {
+                email: adminEmail,
+                role: "admin",
+            },
         });
 
-    } catch (error) {
-        log.error("Error during authentication", { error: error.message, stack: error.stack });
+    } catch (err) {
+        log.error("Error during authentication", {
+            action: "admin_login_error",
+            error: err.message,
+            stack: err.stack,
+            timestamp: new Date().toISOString(),
+        });
         return res.status(500).json({
             success: false,
-            error: "An error occurred during authentication",
+            error: "Authentication service error",
+            message: "An unexpected error occurred",
         });
     }
 };
@@ -84,6 +114,7 @@ const validateToken = (req, res) => {
         return res.status(401).json({
             success: false,
             error: "No token provided",
+            message: "Authorization header with Bearer token is required",
         });
     }
 
@@ -94,6 +125,7 @@ const validateToken = (req, res) => {
 
         return res.status(200).json({
             success: true,
+            message: "Token is valid",
             admin: {
                 email: decoded.email,
                 role: decoded.role,
@@ -101,11 +133,19 @@ const validateToken = (req, res) => {
             expiresAt: new Date(decoded.exp * 1000).toISOString(),
         });
 
-    } catch (error) {
-        if (error.name === "TokenExpiredError") {
-            return res.status(401).json({ success: false, error: "Token expired" });
+    } catch (err) {
+        if (err.name === "TokenExpiredError") {
+            return res.status(401).json({
+                success: false,
+                error: "Token expired",
+                message: "Please login again to get a new token",
+            });
         }
-        return res.status(401).json({ success: false, error: "Invalid token" });
+        return res.status(401).json({
+            success: false,
+            error: "Invalid token",
+            message: "The provided token is not valid",
+        });
     }
 };
 
@@ -117,6 +157,7 @@ const getAdminProfile = (req, res) => {
         return res.status(401).json({
             success: false,
             error: "No token provided",
+            message: "Authorization header with Bearer token is required",
         });
     }
 
@@ -127,6 +168,7 @@ const getAdminProfile = (req, res) => {
 
         return res.status(200).json({
             success: true,
+            message: "Admin profile retrieved successfully",
             admin: {
                 email: decoded.email,
                 role: decoded.role,
@@ -135,10 +177,11 @@ const getAdminProfile = (req, res) => {
             },
         });
 
-    } catch (error) {
+    } catch (err) {
         return res.status(401).json({
             success: false,
             error: "Invalid or expired token",
+            message: "Please login again",
         });
     }
 };

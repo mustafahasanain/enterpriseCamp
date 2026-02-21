@@ -17,7 +17,8 @@ const options = {
         ],
         tags: [
             { name: "Health", description: "Server and database health checks" },
-            { name: "Auth", description: "Admin authentication" },
+            { name: "Authentication", description: "Admin authentication endpoints" },
+            { name: "Admin", description: "Protected admin endpoints (requires Bearer token)" },
         ],
         components: {
             securitySchemes: {
@@ -59,14 +60,23 @@ const options = {
                     type: "object",
                     properties: {
                         success: { type: "boolean", example: true },
+                        message: { type: "string", example: "Login successful" },
                         token: { type: "string", example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." },
-                        expiresIn: { type: "string", example: "7d" },
+                        expiresIn: { type: "string", example: "24h" },
+                        admin: {
+                            type: "object",
+                            properties: {
+                                email: { type: "string", example: "admin@enterprise.com" },
+                                role: { type: "string", example: "admin" },
+                            },
+                        },
                     },
                 },
                 TokenValidationResponse: {
                     type: "object",
                     properties: {
                         success: { type: "boolean", example: true },
+                        message: { type: "string", example: "Token is valid" },
                         admin: {
                             type: "object",
                             properties: {
@@ -78,6 +88,31 @@ const options = {
                     },
                 },
                 AdminProfileResponse: {
+                    type: "object",
+                    properties: {
+                        success: { type: "boolean", example: true },
+                        message: { type: "string", example: "Admin profile retrieved successfully" },
+                        admin: {
+                            type: "object",
+                            properties: {
+                                email: { type: "string", example: "admin@enterprise.com" },
+                                role: { type: "string", example: "admin" },
+                                loginTime: { type: "string", format: "date-time" },
+                                expiresAt: { type: "string", format: "date-time" },
+                            },
+                        },
+                    },
+                },
+                LogoutResponse: {
+                    type: "object",
+                    properties: {
+                        success: { type: "boolean", example: true },
+                        message: { type: "string", example: "Logout successful. Please remove the token from client storage." },
+                        timestamp: { type: "string", format: "date-time" },
+                    },
+                },
+                // ─── Admin ────────────────────────────────────────────
+                AdminMeResponse: {
                     type: "object",
                     properties: {
                         success: { type: "boolean", example: true },

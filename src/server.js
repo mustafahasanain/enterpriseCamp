@@ -63,6 +63,7 @@ app.listen(PORT, () => {
     console.log(`📡  Health:    http://localhost:${PORT}/api/v1/health`);
     console.log(`🗄️   DB Health: http://localhost:${PORT}/api/v1/health/db`);
     console.log(`🔐  Auth:      http://localhost:${PORT}/api/v1/auth/login`);
+    console.log(`🛡️   Admin:     http://localhost:${PORT}/api/v1/admin/me`);
     console.log(`📖  API Docs:  http://localhost:${PORT}/api-docs\n`);
 });
 
