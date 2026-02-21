@@ -1,5 +1,5 @@
 const { Router } = require("express");
-const { login } = require("./controllers");
+const { adminLogin, validateToken, getAdminProfile } = require("./controllers");
 
 const router = Router();
 
@@ -7,82 +7,98 @@ const router = Router();
  * @swagger
  * tags:
  *   name: Auth
- *   description: Admin authentication
+ *   description: Admin authentication endpoints
  */
 
 /**
  * @swagger
- * /auth/login:
+ * /api/v1/auth/login:
  *   post:
- *     summary: Admin login
- *     description: >
- *       Authenticates the admin using credentials stored in `.env`
- *       (`ADMIN_EMAIL` and `ADMIN_PASSWORD_HASH`). Returns a signed JWT
- *       valid for the configured expiry period.
+ *     summary: Admin login (UC-001)
+ *     description: Authenticates the admin using email and bcrypt-hashed password. Returns a JWT token on success.
  *     tags: [Auth]
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
- *             type: object
- *             required:
- *               - email
- *               - password
- *             properties:
- *               email:
- *                 type: string
- *                 format: email
- *                 example: admin@enterprise.com
- *               password:
- *                 type: string
- *                 format: password
- *                 example: "SuperSecret123"
+ *             $ref: '#/components/schemas/AdminLoginRequest'
  *     responses:
  *       200:
- *         description: Login successful — returns JWT token
+ *         description: Login successful — JWT token returned
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 status:
- *                   type: string
- *                   example: ok
- *                 token:
- *                   type: string
- *                   description: Bearer JWT to use in Authorization header
- *                   example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
- *                 expiresIn:
- *                   type: string
- *                   example: "7d"
+ *               $ref: '#/components/schemas/AdminLoginResponse'
  *       400:
  *         description: Missing email or password
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 status:
- *                   type: string
- *                   example: error
- *                 message:
- *                   type: string
- *                   example: "Email and password are required"
+ *               $ref: '#/components/schemas/ErrorResponse'
  *       401:
  *         description: Invalid credentials
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 status:
- *                   type: string
- *                   example: error
- *                 message:
- *                   type: string
- *                   example: "Invalid credentials"
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Server or configuration error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.post("/login", login);
+router.post("/login", adminLogin);
+
+/**
+ * @swagger
+ * /api/v1/auth/validate:
+ *   get:
+ *     summary: Validate JWT token
+ *     description: Verifies the provided Bearer token and returns admin info if valid.
+ *     tags: [Auth]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Token is valid
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/TokenValidationResponse'
+ *       401:
+ *         description: Invalid or expired token
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
+router.get("/validate", validateToken);
+
+/**
+ * @swagger
+ * /api/v1/auth/profile:
+ *   get:
+ *     summary: Get admin profile
+ *     description: Returns admin profile details extracted from the JWT token.
+ *     tags: [Auth]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Profile retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AdminProfileResponse'
+ *       401:
+ *         description: Invalid or expired token
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
+router.get("/profile", getAdminProfile);
 
 module.exports = router;
