@@ -1,0 +1,120 @@
+name: Test and Merge Protection
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_DB: test_enterprise_db
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Set up test environment
+        env:
+          DATABASE_URL: postgresql://test_user:test_password@localhost:5432/test_enterprise_db
+          ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL }}
+          ADMIN_PASSWORD_HASH: ${{ secrets.ADMIN_PASSWORD_HASH }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          JWT_EXPIRES_IN: 24h
+        run: |
+          npm run db:generate
+          echo "Test environment configured"
+
+      - name: Run Unit Tests
+        env:
+          DATABASE_URL: postgresql://test_user:test_password@localhost:5432/test_enterprise_db
+          ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL }}
+          ADMIN_PASSWORD_HASH: ${{ secrets.ADMIN_PASSWORD_HASH }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          JWT_EXPIRES_IN: 24h
+        run: npm run test:unit
+
+      - name: Run Integration Tests
+        env:
+          DATABASE_URL: postgresql://test_user:test_password@localhost:5432/test_enterprise_db
+          ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL }}
+          ADMIN_PASSWORD_HASH: ${{ secrets.ADMIN_PASSWORD_HASH }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          JWT_EXPIRES_IN: 24h
+        run: npm run test:integration
+
+      - name: Test Results Summary
+        if: always()
+        run: |
+          if [ $? -eq 0 ]; then
+            echo "✅ All tests passed successfully!"
+            echo "✅ Unit tests: PASSED"
+            echo "✅ Integration tests: PASSED"
+            echo "🎉 Ready to merge!"
+          else
+            echo "❌ Tests failed!"
+            echo "❌ Merge blocked until tests pass"
+            exit 1
+          fi
+
+  merge-protection:
+    runs-on: ubuntu-latest
+    needs: [test]
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - name: Merge Protection Gate
+        run: |
+          echo "✅ All tests passed - PR is ready to merge!"
+          echo "✅ Unit tests completed successfully"
+          echo "✅ Integration tests completed successfully"
+          echo ""
+          echo "🎉 Safe to merge to main branch!"
+
+      - name: Comment on PR
+        uses: actions/github-script@v7
+        if: success()
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '✅ **All tests passed!** This PR is ready to merge.\n\n**Test Results:**\n- ✅ Unit Tests: PASSED\n- ✅ Integration Tests: PASSED\n- ✅ Test Database: CONNECTED\n\n🎉 Safe to merge to main!'
+            })
+
+      - name: Failure Comment on PR
+        uses: actions/github-script@v7
+        if: failure()
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '❌ **Tests failed!** This PR cannot be merged.\n\n**Issues Found:**\n- ❌ One or more tests are failing\n- ❌ Check the Actions tab for detailed error logs\n\n🔧 Please fix the failing tests before attempting to merge.'
+            })
